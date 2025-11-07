@@ -9,10 +9,12 @@ pub struct UserRepository {
 }
 
 impl UserRepository {
+    #[allow(dead_code)]
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
+    #[allow(dead_code)]
     pub async fn create(&self, user: &User) -> Result<(), sqlx::Error> {
         // Insert into users table
         sqlx::query(
@@ -38,6 +40,7 @@ impl UserRepository {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn update(&self, user: &User) -> Result<(), sqlx::Error> {
         // Update users table
         sqlx::query(
@@ -63,6 +66,7 @@ impl UserRepository {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn delete(&self, id: Uuid) -> Result<(), sqlx::Error> {
         // Delete from user_index_cache first to trigger notification
         sqlx::query("DELETE FROM user_index_cache WHERE id = $1")
@@ -110,10 +114,12 @@ pub struct ProductRepository {
 }
 
 impl ProductRepository {
+    #[allow(dead_code)]
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
+    #[allow(dead_code)]
     pub async fn create(&self, product: &Product) -> Result<(), sqlx::Error> {
         // Insert into products table
         sqlx::query(
@@ -139,6 +145,7 @@ impl ProductRepository {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn update(&self, product: &Product) -> Result<(), sqlx::Error> {
         // Update products table
         sqlx::query(
@@ -164,6 +171,7 @@ impl ProductRepository {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn delete(&self, id: Uuid) -> Result<(), sqlx::Error> {
         // Delete from product_index_cache first to trigger notification
         sqlx::query("DELETE FROM product_index_cache WHERE id = $1")

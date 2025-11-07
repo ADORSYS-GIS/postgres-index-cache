@@ -24,6 +24,7 @@ pub struct User {
 }
 
 impl User {
+    #[allow(dead_code)]
     pub fn new(username: String, email: String) -> Self {
         Self {
             id: Uuid::new_v4(),
@@ -83,6 +84,7 @@ pub struct Product {
 }
 
 impl Product {
+    #[allow(dead_code)]
     pub fn new(user_id: Uuid, product_name: String) -> Self {
         Self {
             id: Uuid::new_v4(),
