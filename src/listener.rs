@@ -166,6 +166,59 @@ impl CacheNotificationListener {
     pub fn channel(&self) -> &str {
         &self.channel
     }
+
+    /// Starts listening for notifications from PostgreSQL and processes them.
+    ///
+    /// This method will continuously listen for notifications on the configured
+    /// channel and dispatch them to the appropriate handlers. It is designed to
+    /// run in a background task.
+    ///
+    /// # Arguments
+    ///
+    /// * `pool` - A `PgPool` to connect to the database.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if it fails to connect to the database
+    /// or listen for notifications.
+    #[cfg(feature = "sqlx-listener")]
+    pub async fn listen(&self, pool: &sqlx::PgPool) -> Result<(), sqlx::Error> {
+        let mut listener = sqlx::postgres::PgListener::connect_with(pool).await?;
+        listener.listen(&self.channel).await?;
+        debug!("Started listening on channel '{}'", self.channel);
+
+        loop {
+            match listener.recv().await {
+                Ok(notification) => {
+                    self.process_notification(notification.payload()).await;
+                }
+                Err(e) => {
+                    error!("Error receiving notification: {}", e);
+                    // Optional: add a delay before trying to reconnect
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+                    // Attempt to reconnect
+                    match sqlx::postgres::PgListener::connect_with(pool).await {
+                        Ok(new_listener) => {
+                            listener = new_listener;
+                            if let Err(listen_err) = listener.listen(&self.channel).await {
+                                error!(
+                                    "Failed to re-listen on channel '{}': {}",
+                                    self.channel, listen_err
+                                );
+                                return Err(listen_err);
+                            }
+                            debug!("Reconnected and listening on channel '{}'", self.channel);
+                        }
+                        Err(connect_err) => {
+                            error!("Failed to reconnect to database: {}", connect_err);
+                            // Continue loop to retry connection
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl Default for CacheNotificationListener {

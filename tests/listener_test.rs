@@ -5,7 +5,6 @@ use parking_lot::RwLock;
 use postgres_index_cache::{
     CacheNotification, CacheNotificationListener, IdxModelCache, IndexCacheHandler,
 };
-use serde_json::json;
 use uuid::Uuid;
 
 use common::entities::{User, UserIndexCache, Product, ProductIndexCache};
@@ -17,7 +16,7 @@ async fn test_user_cache_notification_insert() {
     
     // Create handler for users table
     let handler = Arc::new(IndexCacheHandler::new(
-        "users".to_string(),
+        "user_index_cache".to_string(),
         user_cache.clone(),
     ));
     
@@ -48,7 +47,7 @@ async fn test_user_cache_notification_insert() {
     // Convert the user to cache entry manually (simulating what would be in the notification)
     let user_cache_entry = UserIndexCache::from_user(&user);
     let notification_with_cache = CacheNotification {
-        table: "users".to_string(),
+        table: "user_index_cache".to_string(),
         action: "insert".to_string(),
         id: user_id,
         data: Some(serde_json::to_value(&user_cache_entry).unwrap()),
@@ -84,7 +83,7 @@ async fn test_user_cache_notification_update() {
     
     // Create handler and listener
     let handler = Arc::new(IndexCacheHandler::new(
-        "users".to_string(),
+        "user_index_cache".to_string(),
         user_cache.clone(),
     ));
     
@@ -101,7 +100,7 @@ async fn test_user_cache_notification_update() {
     
     // Create notification for update
     let notification = CacheNotification {
-        table: "users".to_string(),
+        table: "user_index_cache".to_string(),
         action: "update".to_string(),
         id: user_id,
         data: Some(serde_json::to_value(&updated_cache_entry).unwrap()),
@@ -135,7 +134,7 @@ async fn test_user_cache_notification_delete() {
     
     // Create handler and listener
     let handler = Arc::new(IndexCacheHandler::new(
-        "users".to_string(),
+        "user_index_cache".to_string(),
         user_cache.clone(),
     ));
     
@@ -147,7 +146,7 @@ async fn test_user_cache_notification_delete() {
     
     // Create notification for delete
     let notification = CacheNotification {
-        table: "users".to_string(),
+        table: "user_index_cache".to_string(),
         action: "delete".to_string(),
         id: user_id,
         data: None,
@@ -170,7 +169,7 @@ async fn test_product_cache_notification_insert() {
     
     // Create handler for products table
     let handler = Arc::new(IndexCacheHandler::new(
-        "products".to_string(),
+        "product_index_cache".to_string(),
         product_cache.clone(),
     ));
     
@@ -191,7 +190,7 @@ async fn test_product_cache_notification_insert() {
     
     // Create notification payload for insert
     let notification = CacheNotification {
-        table: "products".to_string(),
+        table: "product_index_cache".to_string(),
         action: "insert".to_string(),
         id: product_id,
         data: Some(serde_json::to_value(&product_cache_entry).unwrap()),
@@ -219,11 +218,11 @@ async fn test_multi_table_listener() {
     
     // Create handlers
     let user_handler = Arc::new(IndexCacheHandler::new(
-        "users".to_string(),
+        "user_index_cache".to_string(),
         user_cache.clone(),
     ));
     let product_handler = Arc::new(IndexCacheHandler::new(
-        "products".to_string(),
+        "product_index_cache".to_string(),
         product_cache.clone(),
     ));
     
@@ -252,7 +251,7 @@ async fn test_multi_table_listener() {
     
     // Process user notification
     let user_notification = CacheNotification {
-        table: "users".to_string(),
+        table: "user_index_cache".to_string(),
         action: "insert".to_string(),
         id: user_id,
         data: Some(serde_json::to_value(&user_cache_entry).unwrap()),
@@ -261,7 +260,7 @@ async fn test_multi_table_listener() {
     
     // Process product notification
     let product_notification = CacheNotification {
-        table: "products".to_string(),
+        table: "product_index_cache".to_string(),
         action: "insert".to_string(),
         id: product_id,
         data: Some(serde_json::to_value(&product_cache_entry).unwrap()),

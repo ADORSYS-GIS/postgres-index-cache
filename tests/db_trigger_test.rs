@@ -3,6 +3,7 @@ mod common;
 use std::sync::Arc;
 use std::time::Duration;
 use parking_lot::RwLock;
+use uuid::Uuid;
 use postgres_index_cache::{
     CacheNotificationListener, IdxModelCache, IndexCacheHandler,
 };
@@ -26,14 +27,26 @@ async fn setup_database() -> PgPool {
         .await
         .expect("Failed to connect to database");
 
-    // Read and execute the SQL script that creates tables and triggers
-    let sql_script = include_str!("../sql/cache_notification_triggers.sql");
+    // Clean up first to ensure a fresh state
+    cleanup_database(&pool).await;
+
+    // Read and execute the production SQL script (creates the notify_cache_change function)
+    let production_sql = include_str!("../sql/cache_notification_triggers.sql");
     
-    // Execute the script (split by statement if needed)
-    sqlx::query(sql_script)
+    // Execute the entire production script using raw_sql (supports multiple statements and PL/pgSQL functions)
+    sqlx::raw_sql(production_sql)
         .execute(&pool)
         .await
-        .expect("Failed to execute trigger setup script");
+        .expect("Failed to execute the production script");
+
+    // Read and execute the examples SQL script (creates tables and triggers)
+    let examples_sql = include_str!("cache_notification_triggers_examples.sql");
+    
+    // Execute the entire examples script using raw_sql (supports multiple statements)
+    sqlx::raw_sql(examples_sql)
+        .execute(&pool)
+        .await
+        .expect("Failed to execute the examples script");
 
     pool
 }
@@ -41,12 +54,12 @@ async fn setup_database() -> PgPool {
 /// Clean up database after tests
 async fn cleanup_database(pool: &PgPool) {
     // Drop triggers first
-    sqlx::query("DROP TRIGGER IF EXISTS users_cache_notify ON users")
+    sqlx::query("DROP TRIGGER IF EXISTS user_index_cache_notify ON user_index_cache")
         .execute(pool)
         .await
         .ok();
     
-    sqlx::query("DROP TRIGGER IF EXISTS products_cache_notify ON products")
+    sqlx::query("DROP TRIGGER IF EXISTS product_index_cache_notify ON product_index_cache")
         .execute(pool)
         .await
         .ok();
@@ -58,6 +71,16 @@ async fn cleanup_database(pool: &PgPool) {
         .ok();
 
     sqlx::query("DROP TABLE IF EXISTS users CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
+    sqlx::query("DROP TABLE IF EXISTS user_index_cache CASCADE")
+        .execute(pool)
+        .await
+        .ok();
+
+    sqlx::query("DROP TABLE IF EXISTS product_index_cache CASCADE")
         .execute(pool)
         .await
         .ok();
@@ -81,7 +104,7 @@ async fn test_user_insert_triggers_cache_notification() {
     
     // Create handler for users table
     let handler = Arc::new(IndexCacheHandler::new(
-        "users".to_string(),
+        "user_index_cache".to_string(),
         user_cache.clone(),
     ));
     
@@ -98,26 +121,38 @@ async fn test_user_insert_triggers_cache_notification() {
     // Give listener time to start
     sleep(Duration::from_millis(100)).await;
     
-    // Create repository and insert a user directly into the database
-    let user_repo = UserRepository::new(pool.clone());
-    let user = User::new("alice".to_string(), "alice@example.com".to_string());
-    
-    user_repo.create(&user).await.expect("Failed to create user");
-    
+    // Manually insert a UserIndexCache into the database
+    let user_cache_instance = UserIndexCache::new(
+        Uuid::new_v4(),
+        "alice",
+        "alice@example.com",
+    );
+
+    sqlx::query("INSERT INTO user_index_cache (id, username_hash, email_hash) VALUES ($1, $2, $3)")
+        .bind(user_cache_instance.id)
+        .bind(user_cache_instance.username_hash)
+        .bind(user_cache_instance.email_hash)
+        .execute(&pool)
+    .await
+    .expect("Failed to insert user");
+
     // Give time for notification to be processed
     sleep(Duration::from_millis(500)).await;
-    
+
     // Verify the cache was updated via the trigger
     let cache = user_cache.read();
-    assert!(cache.contains_primary(&user.id), "User should be in cache after insert");
-    
-    let cached_user = cache.get_by_primary(&user.id);
+    assert!(
+        cache.contains_primary(&user_cache_instance.id),
+        "User should be in cache after insert"
+    );
+
+    let cached_user = cache.get_by_primary(&user_cache_instance.id);
     assert!(cached_user.is_some(), "User should be retrievable from cache");
     
     // Verify the cached data matches
     let cached_user = cached_user.unwrap();
-    assert_eq!(cached_user.id, user.id);
-    
+    assert_eq!(cached_user.id, user_cache_instance.id);
+
     // Cleanup
     cleanup_database(&pool).await;
     pool.close().await;
@@ -140,7 +175,7 @@ async fn test_product_insert_triggers_cache_notification() {
     
     // Create handler for products table
     let handler = Arc::new(IndexCacheHandler::new(
-        "products".to_string(),
+        "product_index_cache".to_string(),
         product_cache.clone(),
     ));
     
@@ -200,7 +235,7 @@ async fn test_user_update_triggers_cache_notification() {
     
     // Create handler and listener
     let handler = Arc::new(IndexCacheHandler::new(
-        "users".to_string(),
+        "user_index_cache".to_string(),
         user_cache.clone(),
     ));
     
@@ -225,8 +260,10 @@ async fn test_user_update_triggers_cache_notification() {
     
     // Verify the cache was updated
     let cache = user_cache.read();
-    let cached_user = cache.get_by_primary(&user.id).expect("User should still be in cache");
-    
+    let cached_user = cache
+        .get_by_primary(&user.id)
+        .expect("User should still be in cache");
+
     // The email hash should have changed
     let updated_cache = UserIndexCache::from_user(&updated_user);
     assert_eq!(cached_user.email_hash, updated_cache.email_hash, "Email hash should be updated in cache");
@@ -258,7 +295,7 @@ async fn test_product_update_triggers_cache_notification() {
     
     // Create handler and listener
     let handler = Arc::new(IndexCacheHandler::new(
-        "products".to_string(),
+        "product_index_cache".to_string(),
         product_cache.clone(),
     ));
     
@@ -283,8 +320,10 @@ async fn test_product_update_triggers_cache_notification() {
     
     // Verify the cache was updated
     let cache = product_cache.read();
-    let cached_product = cache.get_by_primary(&product.id).expect("Product should still be in cache");
-    
+    let cached_product = cache
+        .get_by_primary(&product.id)
+        .expect("Product should still be in cache");
+
     // The product name hash should have changed
     let updated_cache = ProductIndexCache::from_product(&updated_product);
     assert_eq!(cached_product.product_name_hash, updated_cache.product_name_hash, 
@@ -314,7 +353,7 @@ async fn test_user_delete_triggers_cache_notification() {
     
     // Create handler and listener
     let handler = Arc::new(IndexCacheHandler::new(
-        "users".to_string(),
+        "user_index_cache".to_string(),
         user_cache.clone(),
     ));
     
@@ -330,18 +369,27 @@ async fn test_user_delete_triggers_cache_notification() {
     sleep(Duration::from_millis(100)).await;
     
     // Verify user is in cache
-    assert!(user_cache.read().contains_primary(&user.id), "User should be in cache initially");
-    
+    assert!(
+        user_cache.read().contains_primary(&user.id),
+        "User should be in cache initially"
+    );
+
     // Delete the user from the database
-    user_repo.delete(user.id).await.expect("Failed to delete user");
+    user_repo
+        .delete(user.id)
+        .await
+        .expect("Failed to delete user");
     
     // Give time for notification to be processed
     sleep(Duration::from_millis(500)).await;
     
     // Verify the cache entry was removed
     let cache = user_cache.read();
-    assert!(!cache.contains_primary(&user.id), "User should be removed from cache after delete");
-    
+    assert!(
+        !cache.contains_primary(&user.id),
+        "User should be removed from cache after delete"
+    );
+
     // Cleanup
     cleanup_database(&pool).await;
     pool.close().await;
@@ -368,7 +416,7 @@ async fn test_product_delete_triggers_cache_notification() {
     
     // Create handler and listener
     let handler = Arc::new(IndexCacheHandler::new(
-        "products".to_string(),
+        "product_index_cache".to_string(),
         product_cache.clone(),
     ));
     
@@ -384,18 +432,27 @@ async fn test_product_delete_triggers_cache_notification() {
     sleep(Duration::from_millis(100)).await;
     
     // Verify product is in cache
-    assert!(product_cache.read().contains_primary(&product.id), "Product should be in cache initially");
-    
+    assert!(
+        product_cache.read().contains_primary(&product.id),
+        "Product should be in cache initially"
+    );
+
     // Delete the product from the database
-    product_repo.delete(product.id).await.expect("Failed to delete product");
+    product_repo
+        .delete(product.id)
+        .await
+        .expect("Failed to delete product");
     
     // Give time for notification to be processed
     sleep(Duration::from_millis(500)).await;
     
     // Verify the cache entry was removed
     let cache = product_cache.read();
-    assert!(!cache.contains_primary(&product.id), "Product should be removed from cache after delete");
-    
+    assert!(
+        !cache.contains_primary(&product.id),
+        "Product should be removed from cache after delete"
+    );
+
     // Cleanup
     cleanup_database(&pool).await;
     pool.close().await;
@@ -415,11 +472,11 @@ async fn test_multi_table_operations_with_cache() {
     
     // Create handlers
     let user_handler = Arc::new(IndexCacheHandler::new(
-        "users".to_string(),
+        "user_index_cache".to_string(),
         user_cache.clone(),
     ));
     let product_handler = Arc::new(IndexCacheHandler::new(
-        "products".to_string(),
+        "product_index_cache".to_string(),
         product_cache.clone(),
     ));
     
@@ -447,8 +504,11 @@ async fn test_multi_table_operations_with_cache() {
     sleep(Duration::from_millis(500)).await;
     
     // Verify user is in cache
-    assert!(user_cache.read().contains_primary(&user.id), "User should be in cache");
-    
+    assert!(
+        user_cache.read().contains_primary(&user.id),
+        "User should be in cache"
+    );
+
     // Insert a product for that user
     let product = Product::new(user.id, "Monitor".to_string());
     product_repo.create(&product).await.expect("Failed to create product");
@@ -456,8 +516,11 @@ async fn test_multi_table_operations_with_cache() {
     sleep(Duration::from_millis(500)).await;
     
     // Verify product is in cache
-    assert!(product_cache.read().contains_primary(&product.id), "Product should be in cache");
-    
+    assert!(
+        product_cache.read().contains_primary(&product.id),
+        "Product should be in cache"
+    );
+
     // Verify the product's user_id index
     let product_cache_read = product_cache.read();
     let products_by_user = product_cache_read.get_by_uuid_index("user_id", &user.id);

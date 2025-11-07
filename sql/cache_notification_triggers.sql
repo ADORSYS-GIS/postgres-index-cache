@@ -1,6 +1,6 @@
--- SQL Trigger Examples for Cache Notifications
--- 
--- This file contains example PostgreSQL triggers and functions to send
+-- Production Cache Notification Function
+--
+-- This file contains the production PostgreSQL trigger function to send
 -- cache invalidation notifications via LISTEN/NOTIFY when data changes occur.
 --
 -- The notifications use a single channel 'cache_invalidation' and include
@@ -11,6 +11,8 @@
 -- =====================================================================
 -- This function can be reused for any table by attaching it to triggers
 -- It sends a notification with the table name, action, and row data
+
+DROP FUNCTION IF EXISTS notify_cache_change() CASCADE;
 
 CREATE OR REPLACE FUNCTION notify_cache_change()
 RETURNS TRIGGER AS $$
@@ -47,108 +49,3 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE plpgsql;
-
--- =====================================================================
--- Example: Users Table
--- =====================================================================
-
--- Create the users table (example schema)
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Create trigger for users table
-CREATE TRIGGER users_cache_notify
-    AFTER INSERT OR UPDATE OR DELETE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION notify_cache_change();
-
--- =====================================================================
--- Example: Products Table
--- =====================================================================
-
--- Create the products table (example schema)
-CREATE TABLE IF NOT EXISTS products (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    product_name TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Create trigger for products table
-CREATE TRIGGER products_cache_notify
-    AFTER INSERT OR UPDATE OR DELETE ON products
-    FOR EACH ROW
-    EXECUTE FUNCTION notify_cache_change();
-
--- =====================================================================
--- Test the Notification System
--- =====================================================================
-
--- First, in a separate session, listen for notifications:
--- LISTEN cache_invalidation;
-
--- Then run these test queries to see the notifications:
-
--- Test INSERT
--- INSERT INTO users (username, email) 
--- VALUES ('alice', 'alice@example.com');
-
--- Test UPDATE
--- UPDATE users SET email = 'alice.updated@example.com' 
--- WHERE username = 'alice';
-
--- Test DELETE
--- DELETE FROM users WHERE username = 'alice';
-
--- Example notification payloads you'll receive:
--- 
--- INSERT:
--- {
---   "table": "users",
---   "action": "insert",
---   "id": "550e8400-e29b-41d4-a716-446655440000",
---   "data": {
---     "id": "550e8400-e29b-41d4-a716-446655440000",
---     "username": "alice",
---     "email": "alice@example.com",
---     "created_at": "2024-01-01T12:00:00",
---     "updated_at": "2024-01-01T12:00:00"
---   }
--- }
---
--- UPDATE:
--- {
---   "table": "users",
---   "action": "update",
---   "id": "550e8400-e29b-41d4-a716-446655440000",
---   "data": {
---     "id": "550e8400-e29b-41d4-a716-446655440000",
---     "username": "alice",
---     "email": "alice.updated@example.com",
---     "created_at": "2024-01-01T12:00:00",
---     "updated_at": "2024-01-01T12:05:00"
---   }
--- }
---
--- DELETE:
--- {
---   "table": "users",
---   "action": "delete",
---   "id": "550e8400-e29b-41d4-a716-446655440000"
--- }
-
--- =====================================================================
--- Cleanup (if needed)
--- =====================================================================
-
--- DROP TRIGGER IF EXISTS users_cache_notify ON users;
--- DROP TRIGGER IF EXISTS products_cache_notify ON products;
--- DROP FUNCTION IF EXISTS notify_cache_change();
--- DROP TABLE IF EXISTS products;
--- DROP TABLE IF EXISTS users;
