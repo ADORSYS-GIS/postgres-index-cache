@@ -26,29 +26,7 @@ impl<T: HasPrimaryKey + Indexable + Clone + Debug> IdxModelCache<T> {
                 return Err(CacheError::DuplicatePrimaryKey(primary_key.to_string()));
             }
 
-            // i64 indexes
-            for (key_name, key_value) in item.i64_keys() {
-                if let Some(value) = key_value {
-                    i64_indexes
-                        .entry(key_name)
-                        .or_default()
-                        .entry(value)
-                        .or_default()
-                        .push(primary_key);
-                }
-            }
-
-            // uuid indexes
-            for (key_name, key_value) in item.uuid_keys() {
-                if let Some(value) = key_value {
-                    uuid_indexes
-                        .entry(key_name)
-                        .or_default()
-                        .entry(value)
-                        .or_default()
-                        .push(primary_key);
-                }
-            }
+            Self::index_item(&item, primary_key, &mut i64_indexes, &mut uuid_indexes);
 
             by_id.insert(primary_key, item);
         }
@@ -68,29 +46,7 @@ impl<T: HasPrimaryKey + Indexable + Clone + Debug> IdxModelCache<T> {
             return;
         }
 
-        // i64 indexes
-        for (key_name, key_value) in item.i64_keys() {
-            if let Some(value) = key_value {
-                self.i64_indexes
-                    .entry(key_name)
-                    .or_default()
-                    .entry(value)
-                    .or_default()
-                    .push(primary_key);
-            }
-        }
-
-        // uuid indexes
-        for (key_name, key_value) in item.uuid_keys() {
-            if let Some(value) = key_value {
-                self.uuid_indexes
-                    .entry(key_name)
-                    .or_default()
-                    .entry(value)
-                    .or_default()
-                    .push(primary_key);
-            }
-        }
+        Self::index_item(&item, primary_key, &mut self.i64_indexes, &mut self.uuid_indexes,);
 
         self.by_id.insert(primary_key, item);
     }
@@ -165,5 +121,36 @@ impl<T: HasPrimaryKey + Indexable + Clone + Debug> IdxModelCache<T> {
     /// Returns an iterator over the items in the cache.
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.by_id.values()
+    }
+
+    fn index_item(
+        item: &T,
+        primary_key: Uuid,
+        i64_indexes: &mut HashMap<String, HashMap<i64, Vec<Uuid>>>,
+        uuid_indexes: &mut HashMap<String, HashMap<Uuid, Vec<Uuid>>>,
+    ) {
+        // i64 indexes
+        for (key_name, key_value) in item.i64_keys() {
+            if let Some(value) = key_value {
+                i64_indexes
+                    .entry(key_name)
+                    .or_default()
+                    .entry(value)
+                    .or_default()
+                    .push(primary_key);
+            }
+        }
+
+        // uuid indexes
+        for (key_name, key_value) in item.uuid_keys() {
+            if let Some(value) = key_value {
+                uuid_indexes
+                    .entry(key_name)
+                    .or_default()
+                    .entry(value)
+                    .or_default()
+                    .push(primary_key);
+            }
+        }
     }
 }

@@ -33,17 +33,17 @@ async fn test_user_cache_notification_insert() {
         email: "alice@example.com".to_string(),
     };
     
-    // Create notification payload for insert
-    let notification = CacheNotification {
-        table: "users".to_string(),
-        action: "insert".to_string(),
-        id: user_id,
-        data: Some(json!({
-            "id": user_id.to_string(),
-            "username": "alice",
-            "email": "alice@example.com"
-        })),
-    };
+    // // Create notification payload for insert
+    // let notification = CacheNotification {
+    //     table: "users".to_string(),
+    //     action: "insert".to_string(),
+    //     id: user_id,
+    //     data: Some(json!({
+    //         "id": user_id.to_string(),
+    //         "username": "alice",
+    //         "email": "alice@example.com"
+    //     })),
+    // };
     
     // Convert the user to cache entry manually (simulating what would be in the notification)
     let user_cache_entry = UserIndexCache::from_user(&user);
