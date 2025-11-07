@@ -9,6 +9,13 @@ parking_lot = "0.12"
 postgres-unit-of-work = { path = "../postgres-unit-of-work" }
 thiserror = "1.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
+tokio-postgres = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+futures = "0.3"
+tokio = { version = "1", features = ["sync"] }
+tokio-stream = "0.1"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

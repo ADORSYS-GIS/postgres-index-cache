@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use uuid::Uuid;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use postgres_index_cache::{HasPrimaryKey, Indexable};
 
 // Hash function to compute i64 hash values
@@ -34,7 +34,7 @@ impl User {
 }
 
 /// UserIndexCache - the cache model for User with hash fields
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UserIndexCache {
     pub id: Uuid,
     pub username_hash: i64,
@@ -93,7 +93,7 @@ impl Product {
 }
 
 /// ProductIndexCache - the cache model for Product with hash fields
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProductIndexCache {
     pub id: Uuid,
     pub user_id: Uuid,
