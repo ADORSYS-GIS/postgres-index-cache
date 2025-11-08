@@ -945,6 +945,7 @@ dependencies = [
 [[package]]
 name = "postgres-unit-of-work"
 version = "0.1.0"
+source = "git+https://github.com/ADORSYS-GIS/postgres-unit-of-work?branch=master#190f2e18a3885f3186e798ae821261aea41f717c"
 dependencies = [
  "async-trait",
  "parking_lot",

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1"
 parking_lot = "0.12"
-postgres-unit-of-work = { path = "../postgres-unit-of-work" }
+postgres-unit-of-work = { git = "https://github.com/ADORSYS-GIS/postgres-unit-of-work", branch = "master" }
 thiserror = "1.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 tokio-postgres = "0.7"
