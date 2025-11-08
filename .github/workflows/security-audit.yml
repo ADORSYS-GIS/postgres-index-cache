@@ -21,7 +21,7 @@ jobs:
       - name: Wait for PostgreSQL to be ready
         run: |
           echo "Waiting for PostgreSQL to start..."
-          until docker compose exec postgres pg_isready -U postgres -d test_db; do
+          until docker compose exec postgres pg_isready -U postgres -d postgres_index_cache_db; do
             sleep 2
           done
           echo "PostgreSQL is ready."
@@ -55,7 +55,7 @@ jobs:
 
       - name: Run clippy security checks
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5434/postgres_index_cache_db
         run: cargo clippy -- -W clippy::suspicious -W clippy::perf -W clippy::complexity
 
       - name: Stop Databases

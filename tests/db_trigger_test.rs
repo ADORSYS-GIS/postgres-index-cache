@@ -18,7 +18,7 @@ use common::{
 /// Helper function to get database URL from environment or use default
 fn get_database_url() -> String {
     std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test_db".to_string())
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5434/postgres_index_cache_db".to_string())
 }
 
 /// Setup the database connection pool and create tables with triggers
@@ -40,7 +40,7 @@ async fn setup_database() -> PgPool {
         .expect("Failed to execute the production script");
 
     // Read and execute the examples SQL script (creates tables and triggers)
-    let examples_sql = include_str!("cache_notification_triggers_examples.sql");
+    let examples_sql = include_str!("migrations/cache_notification_triggers_examples.sql");
     
     // Execute the entire examples script using raw_sql (supports multiple statements)
     sqlx::raw_sql(examples_sql)
@@ -53,40 +53,16 @@ async fn setup_database() -> PgPool {
 
 /// Clean up database after tests
 async fn cleanup_database(pool: &PgPool) {
-    // Drop triggers first
-    sqlx::query("DROP TRIGGER IF EXISTS user_index_cache_notify ON user_index_cache")
-        .execute(pool)
-        .await
-        .ok();
-    
-    sqlx::query("DROP TRIGGER IF EXISTS product_index_cache_notify ON product_index_cache")
+    // Execute cleanup script for examples (tables and triggers)
+    let cleanup_examples_sql = include_str!("cleanup/cleanup_cache_notification_triggers_examples.sql");
+    sqlx::raw_sql(cleanup_examples_sql)
         .execute(pool)
         .await
         .ok();
 
-    // Drop tables
-    sqlx::query("DROP TABLE IF EXISTS products CASCADE")
-        .execute(pool)
-        .await
-        .ok();
-
-    sqlx::query("DROP TABLE IF EXISTS users CASCADE")
-        .execute(pool)
-        .await
-        .ok();
-
-    sqlx::query("DROP TABLE IF EXISTS user_index_cache CASCADE")
-        .execute(pool)
-        .await
-        .ok();
-
-    sqlx::query("DROP TABLE IF EXISTS product_index_cache CASCADE")
-        .execute(pool)
-        .await
-        .ok();
-
-    // Drop function
-    sqlx::query("DROP FUNCTION IF EXISTS notify_cache_change()")
+    // Execute cleanup script for production function
+    let cleanup_production_sql = include_str!("../cleanup/cleanup_cache_notification_triggers.sql");
+    sqlx::raw_sql(cleanup_production_sql)
         .execute(pool)
         .await
         .ok();
