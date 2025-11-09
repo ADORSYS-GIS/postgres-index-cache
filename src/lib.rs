@@ -15,6 +15,7 @@ mod traits;
 mod cache;
 mod transaction_aware_cache;
 mod listener;
+mod db_init;
 
 pub use error::{CacheError, CacheResult};
 pub use traits::{HasPrimaryKey, Indexable};
@@ -29,6 +30,9 @@ pub use listener::{
     IndexCacheHandler,
     DEFAULT_CACHE_CHANNEL,
 };
+
+// Re-export database initialization functions
+pub use db_init::{init_cache_triggers, cleanup_cache_triggers};
 
 // Re-export TransactionAware from postgres-unit-of-work for convenience
 pub use postgres_unit_of_work::TransactionAware;

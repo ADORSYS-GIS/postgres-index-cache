@@ -6,6 +6,7 @@ use parking_lot::RwLock;
 use uuid::Uuid;
 use postgres_index_cache::{
     CacheNotificationListener, IdxModelCache, IndexCacheHandler,
+    init_cache_triggers, cleanup_cache_triggers,
 };
 use sqlx::PgPool;
 use tokio::time::sleep;
@@ -30,14 +31,10 @@ async fn setup_database() -> PgPool {
     // Clean up first to ensure a fresh state
     cleanup_database(&pool).await;
 
-    // Read and execute the production SQL script (creates the notify_cache_change function)
-    let production_sql = include_str!("../sql/cache_notification_triggers.sql");
-    
-    // Execute the entire production script using raw_sql (supports multiple statements and PL/pgSQL functions)
-    sqlx::raw_sql(production_sql)
-        .execute(&pool)
+    // Initialize the cache notification triggers using db_init module
+    init_cache_triggers(&pool)
         .await
-        .expect("Failed to execute the production script");
+        .expect("Failed to initialize cache triggers");
 
     // Read and execute the examples SQL script (creates tables and triggers)
     let examples_sql = include_str!("migrations/cache_notification_triggers_examples.sql");
@@ -60,12 +57,8 @@ async fn cleanup_database(pool: &PgPool) {
         .await
         .ok();
 
-    // Execute cleanup script for production function
-    let cleanup_production_sql = include_str!("../cleanup/cleanup_cache_notification_triggers.sql");
-    sqlx::raw_sql(cleanup_production_sql)
-        .execute(pool)
-        .await
-        .ok();
+    // Cleanup cache triggers using db_init module
+    cleanup_cache_triggers(pool).await.ok();
 }
 
 #[tokio::test]
