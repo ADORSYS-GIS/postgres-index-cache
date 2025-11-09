@@ -2,6 +2,14 @@
 name = "postgres-index-cache"
 version = "0.1.0"
 edition = "2021"
+include = [
+    "src/**/*",
+    "sql/**/*.sql",
+    "cleanup/**/*.sql",
+    "Cargo.toml",
+    "README.md",
+    "LISTEN_NOTIFY_EXAMPLE.md"
+]
 
 [dependencies]
 async-trait = "0.1"
