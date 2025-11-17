@@ -16,11 +16,21 @@ mod cache;
 mod transaction_aware_cache;
 mod listener;
 mod db_init;
+mod main_model_cache;
 
 pub use error::{CacheError, CacheResult};
-pub use traits::{HasPrimaryKey, Indexable};
+pub use traits::{HasPrimaryKey, Indexable, ValidFrom, ValidTo};
 pub use cache::IdxModelCache;
 pub use transaction_aware_cache::TransactionAwareIdxModelCache;
+
+// Re-export main model cache components
+pub use main_model_cache::{
+    MainModelCache,
+    MainModelCacheHandler,
+    CacheConfig,
+    CacheStatistics,
+    EvictionPolicy,
+};
 
 // Re-export listener components
 pub use listener::{

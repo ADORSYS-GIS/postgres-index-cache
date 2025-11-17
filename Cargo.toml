@@ -13,6 +13,7 @@ include = [
 
 [dependencies]
 async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
 parking_lot = "0.12"
 postgres-unit-of-work = { git = "https://github.com/ADORSYS-GIS/postgres-unit-of-work", branch = "master" }
 thiserror = "1.0"
