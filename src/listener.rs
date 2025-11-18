@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, error, warn};
 use uuid::Uuid;
 
-use crate::cache::IdxModelCache;
+use crate::index_cache::IdxModelCache;
 use crate::traits::{HasPrimaryKey, Indexable};
 
 /// The default channel name for cache notifications

@@ -12,16 +12,18 @@
 
 mod error;
 mod traits;
-mod cache;
-mod transaction_aware_cache;
+mod index_cache;
+mod transaction_aware_index_cache;
 mod listener;
 mod db_init;
 mod main_model_cache;
+mod transaction_aware_main_model_cache;
 
 pub use error::{CacheError, CacheResult};
 pub use traits::{HasPrimaryKey, Indexable, ValidFrom, ValidTo};
-pub use cache::IdxModelCache;
-pub use transaction_aware_cache::TransactionAwareIdxModelCache;
+pub use index_cache::IdxModelCache;
+pub use transaction_aware_index_cache::TransactionAwareIdxModelCache;
+pub use transaction_aware_main_model_cache::TransactionAwareMainModelCache;
 
 // Re-export main model cache components
 pub use main_model_cache::{
