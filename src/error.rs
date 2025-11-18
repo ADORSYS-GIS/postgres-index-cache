@@ -26,7 +26,7 @@ impl From<CacheError> for TransactionError {
             CacheError::CommitFailed(msg) => TransactionError::CommitFailed(msg),
             CacheError::RollbackFailed(msg) => TransactionError::RollbackFailed(msg),
             CacheError::DuplicatePrimaryKey(msg) | CacheError::OperationFailed(msg) => {
-                TransactionError::CommitFailed(format!("Cache error: {}", msg))
+                TransactionError::CommitFailed(format!("Cache error: {msg}"))
             }
         }
     }
